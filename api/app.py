@@ -71,3 +71,6 @@ if __name__ == "__main__":
     import uvicorn
     # Start the server on all network interfaces (0.0.0.0) on port 8000
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# Vercel requires a handler function
+handler = app

@@ -32,7 +32,7 @@ export default function Home() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
-      handleSubmit(e as any);
+      handleSubmit(e as React.FormEvent);
     }
   };
 
@@ -190,8 +190,10 @@ export default function Home() {
                         remarkPlugins={[remarkGfm]}
                         rehypePlugins={[rehypeHighlight]}
                         components={{
-                          code: ({ node, inline, className, children, ...props }) => {
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          code: ({ className, children, ...props }: any) => {
                             const match = /language-(\w+)/.exec(className || '');
+                            const inline = !match;
                             return !inline && match ? (
                               <pre className="bg-gray-800 rounded-lg p-4 overflow-x-auto">
                                 <code className={className} {...props}>
@@ -282,8 +284,10 @@ export default function Home() {
                       remarkPlugins={[remarkGfm]}
                       rehypePlugins={[rehypeHighlight]}
                       components={{
-                        code: ({ node, inline, className, children, ...props }) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        code: ({ className, children, ...props }: any) => {
                           const match = /language-(\w+)/.exec(className || '');
+                          const inline = !match;
                           return !inline && match ? (
                             <pre className="bg-gray-800 rounded-lg p-4 overflow-x-auto">
                               <code className={className} {...props}>
