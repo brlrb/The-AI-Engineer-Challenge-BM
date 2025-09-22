@@ -533,24 +533,19 @@ export default function Home() {
 
 
         {/* Chat Toolbar */}
-        <div className="bg-[#FAFAFA] backdrop-blur-sm rounded-t-lg border-t border-l border-r border-[#bbb] px-6 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">💬 Chat</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {messages.length > 0 && (
-              <Button
-                onClick={clearChat}
-                variant="ghost"
-                size="sm"
-                className="text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors"
-                title="Clear chat history"
-              >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Clear Chat
-              </Button>
-            )}
-          </div>
+        <div className="bg-[#FAFAFA] backdrop-blur-sm rounded-t-lg border-t border-l border-r border-[#bbb] px-6 py-3 flex justify-end items-center">
+          {messages.length > 0 && (
+            <Button
+              onClick={clearChat}
+              variant="ghost"
+              size="sm"
+              className="text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors"
+              title="Clear chat history"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Clear Chat
+            </Button>
+          )}
         </div>
 
         {/* Chat Messages */}
