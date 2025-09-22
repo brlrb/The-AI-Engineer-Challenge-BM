@@ -380,124 +380,128 @@ export default function Home() {
             
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto px-1">
-            {/* Provider Selection */}
-            <div className="space-y-4 mt-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-900">AI Provider</label>
-                <select
-                  value={provider}
-                  onChange={(e) => setProvider(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
-                  style={{ '--tw-ring-color': '#266CA9' } as React.CSSProperties}
-                >
-                  <option value="openai">OpenAI</option>
-                  <option value="gemini">Google Gemini</option>
-                </select>
+              {/* Provider Selection Section */}
+              <div className="space-y-4 mt-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-900">AI Provider</label>
+                  <select
+                    value={provider}
+                    onChange={(e) => setProvider(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                    style={{ '--tw-ring-color': '#266CA9' } as React.CSSProperties}
+                  >
+                    <option value="openai">OpenAI</option>
+                    <option value="gemini">Google Gemini</option>
+                  </select>
+                </div>
+
+                {/* API Key Input */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-900">
+                    {getApiKeyLabel()}
+                  </label>
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder={getApiKeyPlaceholder()}
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                    style={{ '--tw-ring-color': '#266CA9' } as React.CSSProperties}
+                  />
+                  <p className="text-gray-600 text-xs">
+                    Your API key is stored locally and never sent to our servers
+                  </p>
+                </div>
+
+                {/* Model Selection */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-900">Model Selection</label>
+                  <select
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                    style={{ '--tw-ring-color': '#266CA9' } as React.CSSProperties}
+                  >
+                    {getAvailableModels().map((modelOption) => (
+                      <option key={modelOption.value} value={modelOption.value}>
+                        {modelOption.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-gray-600 text-xs">
+                    Choose a model. Mini/Nano are faster and cheaper; others are higher quality and more expensive.
+                  </p>
+                </div>
               </div>
 
-              {/* API Key Input */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-900">
-                  {getApiKeyLabel()}
-                </label>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={getApiKeyPlaceholder()}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
-                  style={{ '--tw-ring-color': '#266CA9' } as React.CSSProperties}
-                />
-                <p className="text-gray-600 text-xs">
-                  Your API key is stored locally and never sent to our servers
-                </p>
-              </div>
+              {/* Horizontal Divider */}
+              <div className="my-6 border-t border-gray-200"></div>
 
-              {/* Model Selection */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-900">Model Selection</label>
-                <select
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
-                  style={{ '--tw-ring-color': '#266CA9' } as React.CSSProperties}
-                >
-                  {getAvailableModels().map((modelOption) => (
-                    <option key={modelOption.value} value={modelOption.value}>
-                      {modelOption.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-gray-600 text-xs">
-                  Choose a model. Mini/Nano are faster and cheaper; others are higher quality and more expensive.
-                </p>
-              </div>
-            </div>
-
-
-              {/* Style Controls */}
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-900">Response Style</label>
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                      <span>Tone (casual)</span>
-                      <span>formal</span>
+              {/* Style Controls Section */}
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <label className="text-sm font-medium text-gray-900">Response Style</label>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                        <span>Tone (casual)</span>
+                        <span>formal</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min={0} 
+                        max={100} 
+                        value={tone} 
+                        onChange={(e) => setTone(Number(e.target.value))} 
+                        className="w-full"
+                        style={{ accentColor: '#266CA9' }} 
+                      />
                     </div>
-                    <input 
-                      type="range" 
-                      min={0} 
-                      max={100} 
-                      value={tone} 
-                      onChange={(e) => setTone(Number(e.target.value))} 
-                      className="w-full"
-                      style={{ accentColor: '#266CA9' }} 
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                      <span>Clarity (confusing)</span>
-                      <span>clear</span>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                        <span>Clarity (confusing)</span>
+                        <span>clear</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min={0} 
+                        max={100} 
+                        value={clarity} 
+                        onChange={(e) => setClarity(Number(e.target.value))} 
+                        className="w-full"
+                        style={{ accentColor: '#266CA9' }} 
+                      />
                     </div>
-                    <input 
-                      type="range" 
-                      min={0} 
-                      max={100} 
-                      value={clarity} 
-                      onChange={(e) => setClarity(Number(e.target.value))} 
-                      className="w-full"
-                      style={{ accentColor: '#266CA9' }} 
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                      <span>Professionalism (informal)</span>
-                      <span>polished</span>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                        <span>Professionalism (informal)</span>
+                        <span>polished</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min={0} 
+                        max={100} 
+                        value={professionalism} 
+                        onChange={(e) => setProfessionalism(Number(e.target.value))} 
+                        className="w-full"
+                        style={{ accentColor: '#266CA9' }} 
+                      />
                     </div>
-                    <input 
-                      type="range" 
-                      min={0} 
-                      max={100} 
-                      value={professionalism} 
-                      onChange={(e) => setProfessionalism(Number(e.target.value))} 
-                      className="w-full"
-                      style={{ accentColor: '#266CA9' }} 
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                      <span>Engagement (dull)</span>
-                      <span>engaging</span>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                        <span>Engagement (dull)</span>
+                        <span>engaging</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min={0} 
+                        max={100} 
+                        value={engagement} 
+                        onChange={(e) => setEngagement(Number(e.target.value))} 
+                        className="w-full"
+                        style={{ accentColor: '#266CA9' }} 
+                      />
                     </div>
-                    <input 
-                      type="range" 
-                      min={0} 
-                      max={100} 
-                      value={engagement} 
-                      onChange={(e) => setEngagement(Number(e.target.value))} 
-                      className="w-full"
-                      style={{ accentColor: '#266CA9' }} 
-                    />
                   </div>
                 </div>
               </div>
