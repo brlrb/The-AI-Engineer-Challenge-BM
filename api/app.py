@@ -1,13 +1,25 @@
 # Import required FastAPI components for building the API
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 # Import Pydantic for data validation and settings management
 from pydantic import BaseModel
 # Import OpenAI client for interacting with OpenAI's API
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 import os
-from typing import Optional
+import tempfile
+import asyncio
+from typing import Optional, Dict, Any
+from pathlib import Path
+
+# Import aimakerspace components
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from aimakerspace.vectordatabase import VectorDatabase
+from aimakerspace.text_utils import PDFLoader, TextFileLoader, CharacterTextSplitter
+from aimakerspace.openai_utils.embedding import EmbeddingModel
+from aimakerspace.openai_utils.chatmodel import ChatOpenAI
 
 # Initialize FastAPI application with a title
 app = FastAPI(title="OpenAI Chat API")
@@ -22,28 +34,121 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers in requests
 )
 
+# Global variables for RAG system
+vector_db: Optional[VectorDatabase] = None
+current_document_name: Optional[str] = None
+embedding_model: Optional[EmbeddingModel] = None
+
 # Define the data model for chat requests using Pydantic
 # This ensures incoming request data is properly validated
 class ChatRequest(BaseModel):
-    developer_message: str  # Message from the developer/system
     user_message: str      # Message from the user
     model: Optional[str] = "gpt-4.1-mini"  # Optional model selection with default
     api_key: str          # OpenAI API key for authentication
+    provider: Optional[str] = "openai"  # AI provider (openai, gemini)
+    style: Optional[Dict[str, int]] = None  # Style parameters
+    has_context: Optional[bool] = False  # Whether document context is available
+
+# File upload endpoint for PDF and TXT files
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...), api_key: str = Form(...)):
+    global vector_db, current_document_name, embedding_model
+    
+    try:
+        # Validate file type
+        if file.content_type not in ["application/pdf", "text/plain"]:
+            raise HTTPException(status_code=400, detail="Only PDF and TXT files are allowed")
+        
+        # Validate file size (10MB limit)
+        content = await file.read()
+        if len(content) > 10 * 1024 * 1024:  # 10MB
+            raise HTTPException(status_code=400, detail="File size must be less than 10MB")
+        
+        # Create temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file.filename.split('.')[-1]}") as temp_file:
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Initialize embedding model with API key
+            os.environ["OPENAI_API_KEY"] = api_key
+            embedding_model = EmbeddingModel()
+            
+            # Update the clients with the API key
+            embedding_model.async_client = AsyncOpenAI(api_key=api_key)
+            embedding_model.client = OpenAI(api_key=api_key)
+            
+            # Process the file based on type
+            if file.content_type == "application/pdf":
+                pdf_loader = PDFLoader(temp_file_path)
+                pdf_loader.load_file()
+                documents = pdf_loader.documents
+            else:  # text/plain
+                text_loader = TextFileLoader(temp_file_path)
+                text_loader.load_file()
+                documents = text_loader.documents
+            
+            # Split documents into chunks
+            splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+            chunks = splitter.split_texts(documents)
+            
+            # Create vector database and populate it
+            vector_db = VectorDatabase(embedding_model)
+            await vector_db.abuild_from_list(chunks)
+            
+            # Store document name
+            current_document_name = file.filename
+            
+            return {
+                "message": "File uploaded and processed successfully",
+                "filename": file.filename,
+                "chunks_created": len(chunks),
+                "document_type": file.content_type
+            }
+            
+        finally:
+            # Clean up temporary file
+            os.unlink(temp_file_path)
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
 # Define the main chat endpoint that handles POST requests
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
+    global vector_db, current_document_name
+    
     try:
         # Initialize OpenAI client with the provided API key
         client = OpenAI(api_key=request.api_key)
         
         # Create an async generator function for streaming responses
         async def generate():
+            # Prepare system message
+            system_content = "You are a helpful AI assistant."
+            
+            # If we have document context, use RAG
+            if request.has_context and vector_db is not None and current_document_name:
+                # Search for relevant chunks
+                relevant_chunks = vector_db.search_by_text(request.user_message, k=5, return_as_text=True)
+                
+                # Create context from relevant chunks
+                context = "\n\n".join(relevant_chunks)
+                
+                system_content = f"""You are a helpful AI assistant that answers questions based on the uploaded document "{current_document_name}". 
+                
+                IMPORTANT: You should ONLY answer questions based on the content provided in the document context below. If the question cannot be answered from the document context, politely explain that you can only answer questions about the uploaded document.
+
+                Document Context:
+                {context}
+                
+                Please answer the user's question based only on the information provided in the document context above."""
+            
             # Create a streaming chat completion request
             stream = client.chat.completions.create(
                 model=request.model,
                 messages=[
-                    {"role": "developer", "content": request.developer_message},
+                    {"role": "system", "content": system_content},
                     {"role": "user", "content": request.user_message}
                 ],
                 stream=True  # Enable streaming response

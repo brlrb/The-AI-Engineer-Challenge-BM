@@ -23,7 +23,6 @@ interface UploadedFile {
 
 export default function Home() {
   const [apiKey, setApiKey] = useState('');
-  const [developerMessage, setDeveloperMessage] = useState('You are a helpful AI assistant that answers questions based on uploaded documents. When no document is uploaded, you can have general conversations. When a document is uploaded, you will only answer questions based on that document\'s content.');
   const [userMessage, setUserMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,7 +35,6 @@ export default function Home() {
   const [engagement, setEngagement] = useState(50);
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [isIndexing, setIsIndexing] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [hasContext, setHasContext] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -150,7 +148,6 @@ export default function Home() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          developer_message: developerMessage,
           user_message: userMessage,
           api_key: apiKey,
           provider,
@@ -391,21 +388,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* System Message */}
-            <div className="space-y-4 mt-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-900">
-                  ⚙️ System/Developer Message
-                </label>
-                <textarea
-                  value={developerMessage}
-                  onChange={(e) => setDeveloperMessage(e.target.value)}
-                  placeholder="Define the AI's role and behavior..."
-                  rows={4}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent resize-none text-sm"
-                  style={{ '--tw-ring-color': '#266CA9' } as React.CSSProperties}
-                />
-              </div>
 
               {/* Style Controls */}
               <div className="space-y-3">
@@ -473,7 +455,6 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            </div>
             </div>
           </SheetContent>
         </Sheet>
