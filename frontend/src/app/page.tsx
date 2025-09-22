@@ -725,6 +725,25 @@ export default function Home() {
                 </div>
               </div>
             )}
+
+            {/* Display uploaded image */}
+            {uploadedFile && uploadedFile.fileType === 'image' && uploadedFile.url && (
+              <div className="flex justify-start">
+                <div className="max-w-[80%] rounded-lg px-4 py-3 bg-blue-50 border border-blue-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs opacity-70">🖼️ Uploaded Image</span>
+                    <span className="text-xs opacity-50">{uploadedFile.name}</span>
+                  </div>
+                  <div className="flex justify-center">
+                    <img 
+                      src={uploadedFile.url} 
+                      alt={uploadedFile.name}
+                      className="max-w-full max-h-64 object-contain rounded-lg shadow-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
             
             <div ref={messagesEndRef} />
           </div>
