@@ -293,17 +293,6 @@ export default function Home() {
       console.log('Setting hasContext to true');
       setHasContext(true);
       
-      // Add system message about the uploaded file
-      const systemMsg: Message = {
-        role: 'system',
-        content: isImage 
-          ? `🖼️ Image "${file.name}" has been successfully uploaded! I can now analyze and answer questions about this image.`
-          : `✅ Document "${file.name}" has been successfully uploaded and processed! I will now answer questions based on the content of this document.`,
-        timestamp: new Date()
-      };
-      console.log('Adding system message:', systemMsg);
-      setMessages(prev => [...prev, systemMsg]);
-      
       // Add automatic AI prompt message
       const fileName = file.name;
       const fileExtension = fileName.split('.').pop()?.toUpperCase() || '';
