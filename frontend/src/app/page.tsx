@@ -7,7 +7,7 @@ import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Settings, Upload, FileText, X, Trash2 } from 'lucide-react';
+import { Settings, Upload, FileText, X, Trash2, Bot, Key, Cpu, Palette } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -394,7 +394,10 @@ export default function Home() {
           </SheetTrigger>
           <SheetContent side="right" className="w-[400px] sm:w-[540px] flex flex-col">
             <SheetHeader className="flex-shrink-0">
-              <SheetTitle style={{ color: '#266CA9' }}>⚙️ Settings</SheetTitle>
+              <SheetTitle style={{ color: '#266CA9' }} className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Settings
+              </SheetTitle>
             </SheetHeader>
             
             {/* Scrollable content */}
@@ -402,7 +405,10 @@ export default function Home() {
               {/* Provider Selection Section */}
               <div className="space-y-4 mt-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-900">AI Provider</label>
+                  <label className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                    <Bot className="h-4 w-4" />
+                    AI Provider
+                  </label>
                   <select
                     value={provider}
                     onChange={(e) => setProvider(e.target.value)}
@@ -416,8 +422,9 @@ export default function Home() {
 
                 {/* API Key Input */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-900">
-                    {getApiKeyLabel()}
+                  <label className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                    <Key className="h-4 w-4" />
+                    {getApiKeyLabel().replace('🔑 ', '')}
                   </label>
                   <input
                     type="password"
@@ -434,7 +441,10 @@ export default function Home() {
 
                 {/* Model Selection */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-900">Model Selection</label>
+                  <label className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                    <Cpu className="h-4 w-4" />
+                    Model Selection
+                  </label>
                   <select
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
@@ -459,7 +469,10 @@ export default function Home() {
               {/* Style Controls Section */}
               <div className="space-y-4">
                 <div className="space-y-3">
-                  <label className="text-sm font-medium text-gray-900">Response Style</label>
+                  <label className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                    <Palette className="h-4 w-4" />
+                    Response Style
+                  </label>
                   <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
