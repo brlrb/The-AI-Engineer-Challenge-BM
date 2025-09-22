@@ -1,53 +1,41 @@
-# Image Upload & Dynamic Placeholder Messages - Merge Instructions
-
-## Overview
-This feature adds image upload functionality to the AI chat application, allowing users to upload JPG/JPEG images (max 10MB) and have the AI analyze them using vision models. Additionally, it includes dynamic placeholder messages that appear when the chat is empty, providing engaging prompts to users.
+# Merge Instructions
 
 ## Changes Made
+Added modern icons to the settings slider sidebar to improve visual consistency and user experience:
 
-### Backend (API)
-- **New file**: `aimakerspace/image_utils.py` - Image processing utilities
-- **Updated**: `aimakerspace/__init__.py` - Added image utilities exports
-- **Updated**: `api/app.py` - Added image upload endpoint and vision support
-- **Updated**: `api/requirements.txt` - Added Pillow dependency
+- **Settings Title**: Replaced emoji gear icon (⚙️) with modern Settings icon from lucide-react
+- **AI Provider**: Added Bot icon to represent AI provider selection
+- **API Key**: Added Key icon to represent API key input
+- **Model Selection**: Added Cpu icon to represent model/processor selection
+- **Response Style**: Added Palette icon to represent style customization
 
-### Frontend
-- **Updated**: `frontend/src/app/page.tsx` - Added image upload UI, functionality, and dynamic placeholder messages
-
-## Features Added
-1. **Image Upload**: Users can upload JPG/JPEG images up to 10MB
-2. **Image Preview**: Shows uploaded image thumbnail in the chat interface
-3. **Vision Support**: AI can analyze and answer questions about uploaded images
-4. **Dual Mode**: Supports both document (PDF/TXT) and image modes
-5. **Validation**: Client and server-side validation for file types and sizes
-6. **Dynamic Placeholder Messages**: Engaging messages appear when chat is empty
-7. **Auto-rotating Messages**: Placeholder messages change every 3 seconds
-8. **Smooth Animations**: Subtle pulse animation for better user experience
-
-## Merge Instructions
+## How to Merge
 
 ### Option 1: GitHub Pull Request (Recommended)
-1. Push the feature branch to GitHub:
+1. Push the current branch to GitHub:
    ```bash
    git push origin feature/image-upload
    ```
-2. Go to GitHub repository
-3. Create a Pull Request from `feature/image-upload` to `main`
-4. Review the changes
-5. Merge the Pull Request
+2. Go to the GitHub repository
+3. Click "Compare & pull request" when the notification appears
+4. Set the base branch to `main` and compare branch to `feature/image-upload`
+5. Add a descriptive title: "Add modern icons to settings sidebar"
+6. Add description of the changes made
+7. Click "Create pull request"
+8. Review and merge the PR
 
 ### Option 2: GitHub CLI
-1. Push the feature branch:
+1. Push the current branch:
    ```bash
    git push origin feature/image-upload
    ```
-2. Create and merge PR using GitHub CLI:
+2. Create and merge the pull request:
    ```bash
-   gh pr create --title "feat: Add image upload functionality" --body "Adds image upload support for JPG/JPEG files with AI vision analysis"
-   gh pr merge --squash
+   gh pr create --title "Add modern icons to settings sidebar" --body "Added modern lucide-react icons to improve visual consistency in the settings sidebar" --base main --head feature/image-upload
+   gh pr merge --merge --delete-branch
    ```
 
-### Option 3: Direct Merge (if working locally)
+### Option 3: Direct Merge (if you have permissions)
 1. Switch to main branch:
    ```bash
    git checkout main
@@ -60,27 +48,16 @@ This feature adds image upload functionality to the AI chat application, allowin
    ```bash
    git push origin main
    ```
+4. Delete the feature branch:
+   ```bash
+   git branch -d feature/image-upload
+   git push origin --delete feature/image-upload
+   ```
+
+## Files Modified
+- `frontend/src/app/page.tsx` - Updated settings sidebar with modern icons
 
 ## Testing
-After merging, test the following:
-1. Start the API server: `cd api && python app.py`
-2. Start the frontend: `cd frontend && npm run dev`
-3. **Test placeholder messages**: Open the app and verify placeholder messages appear when chat is empty
-4. **Test message rotation**: Wait 3 seconds to see messages change automatically
-5. Upload a JPG/JPEG image
-6. Ask questions about the image
-7. Verify the AI can analyze the image content
-8. **Test message hiding**: Send a message and verify placeholder disappears
-
-## Dependencies
-- **New**: Pillow==10.0.0 (for image processing)
-- **Existing**: All previous dependencies remain the same
-
-## Notes
-- Images are processed and stored as base64 for AI consumption
-- The feature maintains backward compatibility with existing document upload functionality
-- Image uploads are validated both client-side and server-side
-- The UI clearly indicates when in image mode vs document mode
-- Placeholder messages include 9 different engaging prompts
-- Messages rotate every 3 seconds only when chat is empty
-- Placeholder messages are hidden during loading, parsing, or when messages exist
+- Verify all icons display correctly in the settings sidebar
+- Ensure icons are properly aligned with their respective labels
+- Check that the UI remains responsive and accessible
