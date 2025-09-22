@@ -56,9 +56,18 @@ export default function Home() {
   const [placeholderMessage, setPlaceholderMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const adjustTextareaHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
+    }
   };
 
   // Function to get a random placeholder message
@@ -522,11 +531,11 @@ export default function Home() {
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2" style={{ color: '#266CA9' }}>
+        <div className="text-center mb-5">
+          <h1 className="text-2xl font-bold mb-2" style={{ color: '#266CA9' }}>
             🤖 AIM Challenge
           </h1>
-          <p className="text-black text-lg">
+          <p className="text-black text-sm">
             Using <span className="font-semibold text-black">{model}</span> from <span className="font-semibold text-black">{getProviderDisplayName()}</span>
             {!apiKey.trim() && (
               <span className="text-red-500 text-sm ml-2">• API key is missing</span>
@@ -552,7 +561,7 @@ export default function Home() {
         </div>
 
         {/* Chat Messages */}
-        <div className="bg-[#FAFAFA] backdrop-blur-sm rounded-b-lg p-6 mb-6 h-96 overflow-y-auto border-l border-r border-b border-[#bbb]">
+        <div className="bg-[#FAFAFA] backdrop-blur-sm rounded-b-lg p-6 mb-6 h-105 overflow-y-auto border-l border-r border-b border-[#bbb]">
           <div className="space-y-4">
             {/* Placeholder message when chat is empty */}
             {messages.length === 0 && !isLoading && !isParsing && (
@@ -806,7 +815,7 @@ export default function Home() {
         </div>
 
         {/* Message Input */}
-        <form onSubmit={handleSubmit} className="bg-[#FAFAFA] backdrop-blur-sm rounded-lg p-6 border border-[#bbb]">
+        <form onSubmit={handleSubmit} className="">
           <div className="flex gap-4">
             <div className="flex-1 flex flex-col gap-4">
               {/* File Upload Section */}
@@ -827,10 +836,11 @@ export default function Home() {
                         fileInputRef.current?.click();
                       }}
                       disabled={isUploading || isParsing || !apiKey.trim()}
-                      className="flex items-center gap-2 px-4 py-2"
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm"
                       variant="outline"
+                      size="sm"
                     >
-                      <Upload className="h-4 w-4" />
+                      <Upload className="h-3.5 w-3.5" />
                       {isUploading ? 'Uploading...' : isParsing ? 'Processing...' : 'Upload File'}
                     </Button>
                     <p className="text-xs text-gray-500">Max 10MB • PDF, TXT, or JPG/JPEG files</p>
@@ -883,13 +893,15 @@ export default function Home() {
               </div>
 
               <textarea
+                ref={textareaRef}
                 value={userMessage}
                 onChange={(e) => setUserMessage(e.target.value)}
+                onInput={adjustTextareaHeight}
                 onKeyDown={handleKeyDown}
                 placeholder={isParsing ? "Document is being processed... Please wait..." : "Type your message here... (Press Enter to send, Shift+Enter for new line)"}
                 disabled={isLoading || isParsing}
-                rows={3}
-                className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent disabled:opacity-50 resize-none"
+                rows={2}
+                className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 placeholder:text-sm focus:outline-none focus:ring-2 focus:border-transparent disabled:opacity-50 resize-none overflow-hidden"
                 style={{ '--tw-ring-color': '#266CA9' } as React.CSSProperties}
               />
             </div>
