@@ -29,7 +29,7 @@ const PLACEHOLDER_MESSAGES = [
   "👋 Hi there! What's on your mind today?",
   "Start a conversation… I'm here to help.",
   "Ask me anything — from quick facts to deep dives.",
-  "Type your question or task here…",
+  "Type your question or task below on the chat window...",
   "Need ideas? Try: 'Summarize this article' or 'Plan a 3-day trip to Paris'.",
   "What would you like to do today? (Brainstorm, Research, Write, Plan…)",
   "✨ Got a thought? Let's explore it together.",
@@ -138,7 +138,7 @@ export default function Home() {
     if (messages.length === 0) {
       const interval = setInterval(() => {
         setPlaceholderMessage(getRandomPlaceholderMessage());
-      }, 3000); // Change every 3 seconds
+      }, 5000); // Change every 5 seconds
 
       return () => clearInterval(interval);
     }
