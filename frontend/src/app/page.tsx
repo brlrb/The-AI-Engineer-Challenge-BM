@@ -5,6 +5,9 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Settings, Upload, FileText, X } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -12,18 +15,93 @@ interface Message {
   timestamp: Date;
 }
 
+interface UploadedFile {
+  name: string;
+  type: string;
+  size: number;
+}
+
 export default function Home() {
   const [apiKey, setApiKey] = useState('');
-  const [developerMessage, setDeveloperMessage] = useState('You are a helpful AI assistant.');
+  const [developerMessage, setDeveloperMessage] = useState('You are a helpful AI assistant that answers questions based on uploaded documents. When no document is uploaded, you can have general conversations. When a document is uploaded, you will only answer questions based on that document\'s content.');
   const [userMessage, setUserMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
+  const [provider, setProvider] = useState('openai');
+  const [model, setModel] = useState('gpt-4.1');
+  const [tone, setTone] = useState(50);
+  const [clarity, setClarity] = useState(50);
+  const [professionalism, setProfessionalism] = useState(50);
+  const [engagement, setEngagement] = useState(50);
+  const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isIndexing, setIsIndexing] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
+  const [hasContext, setHasContext] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  const getAvailableModels = () => {
+    if (provider === 'openai') {
+      return [
+        { value: 'gpt-4.1', label: 'gpt-4.1' },
+        { value: 'gpt-4.1-mini', label: 'gpt-4.1-mini' },
+        { value: 'gpt-4.1-nano', label: 'gpt-4.1-nano' },
+        { value: 'gpt-5', label: 'gpt-5' },
+        { value: 'gpt-5-mini', label: 'gpt-5-mini' },
+        { value: 'gpt-5-nano', label: 'gpt-5-nano' },
+      ];
+    } else if (provider === 'gemini') {
+      return [
+        { value: 'gemini-1.5-pro', label: 'gemini-1.5-pro' },
+        { value: 'gemini-1.5-flash', label: 'gemini-1.5-flash' },
+        { value: 'gemini-1.0-pro', label: 'gemini-1.0-pro' },
+      ];
+    }
+    return [];
+  };
+
+  const getApiKeyLabel = () => {
+    if (provider === 'openai') {
+      return '🔑 OpenAI API Key';
+    } else if (provider === 'gemini') {
+      return '🔑 Google Gemini API Key';
+    }
+    return '🔑 API Key';
+  };
+
+  const getApiKeyPlaceholder = () => {
+    if (provider === 'openai') {
+      return 'Enter your OpenAI API key...';
+    } else if (provider === 'gemini') {
+      return 'Enter your Google Gemini API key...';
+    }
+    return 'Enter your API key...';
+  };
+
+  const getProviderDisplayName = () => {
+    if (provider === 'openai') {
+      return 'OpenAI';
+    } else if (provider === 'gemini') {
+      return 'Google Gemini';
+    }
+    return provider;
+  };
+
+  // Update model and reset API key when provider changes
+  useEffect(() => {
+    const models = getAvailableModels();
+    if (models.length > 0) {
+      setModel(models[0].value);
+    }
+    // Reset API key when switching providers since each provider needs different keys
+    setApiKey('');
+  }, [provider]);
 
   useEffect(() => {
     scrollToBottom();
@@ -38,6 +116,10 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log('Submit clicked - API key:', apiKey, 'Message:', userMessage);
+    console.log('API key trimmed length:', apiKey.trim().length);
+    console.log('Message trimmed length:', userMessage.trim().length);
     
     if (!apiKey.trim() || !userMessage.trim()) {
       alert('Please enter both API key and message');
@@ -61,6 +143,7 @@ export default function Home() {
                     : '/api/chat';
 
     try {
+      console.log('Submitting to API with model:', model);
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -70,7 +153,15 @@ export default function Home() {
           developer_message: developerMessage,
           user_message: userMessage,
           api_key: apiKey,
-          model: 'gpt-4.1-mini'
+          provider,
+          model,
+          style: {
+            tone,
+            clarity,
+            professionalism,
+            engagement,
+          },
+          has_context: hasContext
         }),
       });
 
@@ -117,52 +208,296 @@ export default function Home() {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    console.log('File selected:', file.name, file.type, file.size);
+
+    // Check if API key is provided
+    if (!apiKey.trim()) {
+      alert('Please enter your API key before uploading a file.');
+      return;
+    }
+
+    console.log('API key provided, starting upload...');
+
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'text/plain'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please upload only PDF or TXT files.');
+      return;
+    }
+
+    // Validate file size (10MB limit)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      alert('File size must be less than 10MB.');
+      return;
+    }
+
+    setIsUploading(true);
+    setIsParsing(true);
+    setUploadedFile({
+      name: file.name,
+      type: file.type,
+      size: file.size
+    });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', apiKey);
+
+      const apiUrl = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+                      ? 'http://127.0.0.1:8000/api/upload'
+                      : '/api/upload';
+
+      console.log('Uploading to:', apiUrl);
+      console.log('FormData contents:', Array.from(formData.entries()));
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Upload failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('File uploaded and indexed:', result);
+      console.log('Setting hasContext to true');
+      setHasContext(true);
+      
+      // Add system message about the uploaded document
+      const systemMsg: Message = {
+        role: 'system',
+        content: `✅ Document "${file.name}" has been successfully uploaded and processed! I will now answer questions based on the content of this document.`,
+        timestamp: new Date()
+      };
+      console.log('Adding system message:', systemMsg);
+      setMessages(prev => [...prev, systemMsg]);
+      
+      // Add automatic AI prompt message
+      const fileName = file.name;
+      const fileExtension = fileName.split('.').pop()?.toUpperCase() || '';
+      const autoPromptMsg: Message = {
+        role: 'assistant',
+        content: `🎉 Great! I've successfully analyzed your ${fileExtension} document "${fileName}" and I'm now ready to answer questions based on its content. What would you like to know about this document?`,
+        timestamp: new Date()
+      };
+      console.log('Adding auto prompt message:', autoPromptMsg);
+      setMessages(prev => [...prev, autoPromptMsg]);
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert(`Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setUploadedFile(null);
+    } finally {
+      setIsUploading(false);
+      setIsParsing(false);
+    }
+  };
+
+  const removeUploadedFile = () => {
+    setUploadedFile(null);
+    setHasContext(false);
+    setIsParsing(false);
+    setMessages(prev => prev.filter(msg => msg.role !== 'system'));
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+    <div className="min-h-screen bg-white">
+      {/* Settings Button - Top Left */}
+      <div className="absolute top-4 right-4 z-10">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="icon">
+              <Settings className="h-4 w-4" />
+              <span className="sr-only">Open settings</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-[400px] sm:w-[540px] flex flex-col">
+            <SheetHeader className="flex-shrink-0">
+              <SheetTitle style={{ color: '#266CA9' }}>⚙️ Settings</SheetTitle>
+            </SheetHeader>
+            
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto px-1">
+            {/* Provider Selection */}
+            <div className="space-y-4 mt-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-900">AI Provider</label>
+                <select
+                  value={provider}
+                  onChange={(e) => setProvider(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                  style={{ '--tw-ring-color': '#266CA9' } as React.CSSProperties}
+                >
+                  <option value="openai">OpenAI</option>
+                  <option value="gemini">Google Gemini</option>
+                </select>
+              </div>
+
+              {/* API Key Input */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-900">
+                  {getApiKeyLabel()}
+                </label>
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder={getApiKeyPlaceholder()}
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                  style={{ '--tw-ring-color': '#266CA9' } as React.CSSProperties}
+                />
+                <p className="text-gray-600 text-xs">
+                  Your API key is stored locally and never sent to our servers
+                </p>
+              </div>
+
+              {/* Model Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-900">Model Selection</label>
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                  style={{ '--tw-ring-color': '#266CA9' } as React.CSSProperties}
+                >
+                  {getAvailableModels().map((modelOption) => (
+                    <option key={modelOption.value} value={modelOption.value}>
+                      {modelOption.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-gray-600 text-xs">
+                  Choose a model. Mini/Nano are faster and cheaper; others are higher quality and more expensive.
+                </p>
+              </div>
+            </div>
+
+            {/* System Message */}
+            <div className="space-y-4 mt-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-900">
+                  ⚙️ System/Developer Message
+                </label>
+                <textarea
+                  value={developerMessage}
+                  onChange={(e) => setDeveloperMessage(e.target.value)}
+                  placeholder="Define the AI's role and behavior..."
+                  rows={4}
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent resize-none text-sm"
+                  style={{ '--tw-ring-color': '#266CA9' } as React.CSSProperties}
+                />
+              </div>
+
+              {/* Style Controls */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-900">Response Style</label>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                      <span>Tone (casual)</span>
+                      <span>formal</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min={0} 
+                      max={100} 
+                      value={tone} 
+                      onChange={(e) => setTone(Number(e.target.value))} 
+                      className="w-full"
+                      style={{ accentColor: '#266CA9' }} 
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                      <span>Clarity (confusing)</span>
+                      <span>clear</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min={0} 
+                      max={100} 
+                      value={clarity} 
+                      onChange={(e) => setClarity(Number(e.target.value))} 
+                      className="w-full"
+                      style={{ accentColor: '#266CA9' }} 
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                      <span>Professionalism (informal)</span>
+                      <span>polished</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min={0} 
+                      max={100} 
+                      value={professionalism} 
+                      onChange={(e) => setProfessionalism(Number(e.target.value))} 
+                      className="w-full"
+                      style={{ accentColor: '#266CA9' }} 
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                      <span>Engagement (dull)</span>
+                      <span>engaging</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min={0} 
+                      max={100} 
+                      value={engagement} 
+                      onChange={(e) => setEngagement(Number(e.target.value))} 
+                      className="w-full"
+                      style={{ accentColor: '#266CA9' }} 
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">
-            🤖 AI Engineer Challenge
+          <h1 className="text-4xl font-bold mb-2" style={{ color: '#266CA9' }}>
+            🤖 AIM Challenge
           </h1>
-          <p className="text-purple-200 text-lg">
-            Chat with GPT-4.1-mini using your OpenAI API key
+          <p className="text-black text-lg">
+            Using <span className="font-semibold text-black">{model}</span> from <span className="font-semibold text-black">{getProviderDisplayName()}</span>
+            {hasContext && uploadedFile && (
+              <span className="ml-2 text-sm text-green-600 font-medium">
+                📄 Document Mode: {uploadedFile.name}
+              </span>
+            )}
           </p>
         </div>
 
-        {/* API Key Input */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-6">
-          <label className="block text-white font-medium mb-2">
-            🔑 OpenAI API Key
-          </label>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Enter your OpenAI API key..."
-            className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
-          />
-          <p className="text-purple-200 text-sm mt-2">
-            Your API key is stored locally and never sent to our servers
-          </p>
-        </div>
-
-        {/* Developer Message Input */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-6">
-          <label className="block text-white font-medium mb-2">
-            ⚙️ System/Developer Message
-          </label>
-          <textarea
-            value={developerMessage}
-            onChange={(e) => setDeveloperMessage(e.target.value)}
-            placeholder="Define the AI's role and behavior..."
-            rows={3}
-            className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent resize-none"
-          />
-        </div>
 
         {/* Chat Messages */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-6 h-96 overflow-y-auto">
+        <div className="bg-[#FAFAFA] backdrop-blur-sm rounded-lg p-6 mb-6 h-96 overflow-y-auto border border-[#bbb]">
           <div className="space-y-4">
             {messages.map((message, index) => (
               <div
@@ -172,8 +507,8 @@ export default function Home() {
                 <div
                   className={`max-w-[80%] rounded-lg px-4 py-3 ${
                     message.role === 'user'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-white/20 text-white'
+                      ? 'bg-[#ECECEC] text-gray-900'
+                      : 'bg-transparent text-[#696969]'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -184,7 +519,7 @@ export default function Home() {
                       {formatTime(message.timestamp)}
                     </span>
                   </div>
-                  <div className="prose prose-invert max-w-none">
+                  <div className="prose max-w-none">
                     {message.role === 'assistant' ? (
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
@@ -217,13 +552,13 @@ export default function Home() {
                             </blockquote>
                           ),
                           h1: ({ children }) => (
-                            <h1 className="text-2xl font-bold mb-4 text-white">{children}</h1>
+                            <h1 className="text-2xl font-bold mb-4 text-[#696969]">{children}</h1>
                           ),
                           h2: ({ children }) => (
-                            <h2 className="text-xl font-bold mb-3 text-white">{children}</h2>
+                            <h2 className="text-xl font-bold mb-3 text-[#696969]">{children}</h2>
                           ),
                           h3: ({ children }) => (
-                            <h3 className="text-lg font-bold mb-2 text-white">{children}</h3>
+                            <h3 className="text-lg font-bold mb-2 text-[#696969]">{children}</h3>
                           ),
                           ul: ({ children }) => (
                             <ul className="list-disc list-inside mb-4 space-y-1">{children}</ul>
@@ -232,10 +567,10 @@ export default function Home() {
                             <ol className="list-decimal list-inside mb-4 space-y-1">{children}</ol>
                           ),
                           li: ({ children }) => (
-                            <li className="text-gray-100">{children}</li>
+                            <li className="text-[#696969]">{children}</li>
                           ),
                           p: ({ children }) => (
-                            <p className="mb-3 text-gray-100 leading-relaxed">{children}</p>
+                            <p className="mb-3 text-[#696969] leading-relaxed">{children}</p>
                           ),
                           a: ({ children, href }) => (
                             <a href={href} className="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer">
@@ -250,12 +585,12 @@ export default function Home() {
                             </div>
                           ),
                           th: ({ children }) => (
-                            <th className="border border-gray-600 px-4 py-2 bg-gray-700 text-left font-semibold text-white">
+                            <th className="border border-gray-600 px-4 py-2 bg-transparent text-left font-semibold text-[#696969]">
                               {children}
                             </th>
                           ),
                           td: ({ children }) => (
-                            <td className="border border-gray-600 px-4 py-2 text-gray-100">
+                            <td className="border border-gray-600 px-4 py-2 text-[#696969]">
                               {children}
                             </td>
                           ),
@@ -264,22 +599,47 @@ export default function Home() {
                         {message.content}
                       </ReactMarkdown>
                     ) : (
-                      <div className="whitespace-pre-wrap text-gray-100">{message.content}</div>
+                      <div className="whitespace-pre-wrap text-gray-900">{message.content}</div>
                     )}
                   </div>
                 </div>
               </div>
             ))}
             
-            {/* Current streaming response */}
-            {isLoading && currentResponse && (
+            {/* Document parsing indicator */}
+            {isParsing && (
               <div className="flex justify-start">
-                <div className="max-w-[80%] rounded-lg px-4 py-3 bg-white/20 text-white">
+                <div className="max-w-[80%] rounded-lg px-4 py-3 bg-blue-50 border border-blue-200 text-blue-800">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs opacity-70">📄 AI</span>
+                    <span className="inline-block h-4 w-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                    <span className="text-sm">Processing document... Please wait while I analyze the content.</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Waiting spinner before any response arrives */}
+            {isLoading && !currentResponse && !isParsing && (
+              <div className="flex justify-start">
+                <div className="max-w-[80%] rounded-lg px-4 py-3 bg-transparent text-[#696969]">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs opacity-70">🤖 AI</span>
+                    <span className="inline-block h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Current streaming response */}
+            {isLoading && currentResponse && !isParsing && (
+              <div className="flex justify-start">
+                <div className="max-w-[80%] rounded-lg px-4 py-3 bg-transparent text-[#696969]">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs opacity-70">🤖 AI</span>
                     <span className="text-xs opacity-50">typing...</span>
                   </div>
-                  <div className="prose prose-invert max-w-none">
+                  <div className="prose max-w-none">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       rehypePlugins={[rehypeHighlight]}
@@ -311,13 +671,13 @@ export default function Home() {
                           </blockquote>
                         ),
                         h1: ({ children }) => (
-                          <h1 className="text-2xl font-bold mb-4 text-white">{children}</h1>
+                          <h1 className="text-2xl font-bold mb-4 text-[#696969]">{children}</h1>
                         ),
                         h2: ({ children }) => (
-                          <h2 className="text-xl font-bold mb-3 text-white">{children}</h2>
+                          <h2 className="text-xl font-bold mb-3 text-[#696969]">{children}</h2>
                         ),
                         h3: ({ children }) => (
-                          <h3 className="text-lg font-bold mb-2 text-white">{children}</h3>
+                          <h3 className="text-lg font-bold mb-2 text-[#696969]">{children}</h3>
                         ),
                         ul: ({ children }) => (
                           <ul className="list-disc list-inside mb-4 space-y-1">{children}</ul>
@@ -326,10 +686,10 @@ export default function Home() {
                           <ol className="list-decimal list-inside mb-4 space-y-1">{children}</ol>
                         ),
                         li: ({ children }) => (
-                          <li className="text-gray-100">{children}</li>
+                          <li className="text-[#696969]">{children}</li>
                         ),
                         p: ({ children }) => (
-                          <p className="mb-3 text-gray-100 leading-relaxed">{children}</p>
+                          <p className="mb-3 text-[#696969] leading-relaxed">{children}</p>
                         ),
                         a: ({ children, href }) => (
                           <a href={href} className="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer">
@@ -344,12 +704,12 @@ export default function Home() {
                           </div>
                         ),
                         th: ({ children }) => (
-                          <th className="border border-gray-600 px-4 py-2 bg-gray-700 text-left font-semibold text-white">
+                          <th className="border border-gray-600 px-4 py-2 bg-transparent text-left font-semibold text-[#696969]">
                             {children}
                           </th>
                         ),
                         td: ({ children }) => (
-                          <td className="border border-gray-600 px-4 py-2 text-gray-100">
+                          <td className="border border-gray-600 px-4 py-2 text-[#696969]">
                             {children}
                           </td>
                         ),
@@ -367,26 +727,99 @@ export default function Home() {
         </div>
 
         {/* Message Input */}
-        <form onSubmit={handleSubmit} className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+        <form onSubmit={handleSubmit} className="bg-[#FAFAFA] backdrop-blur-sm rounded-lg p-6 border border-[#bbb]">
           <div className="flex gap-4">
-            <textarea
-              value={userMessage}
-              onChange={(e) => setUserMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)"
-              disabled={isLoading}
-              rows={3}
-              className="flex-1 px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent disabled:opacity-50 resize-none"
-            />
+            <div className="flex-1 flex flex-col gap-4">
+              {/* Document Upload Section */}
+              <div>
+                {!uploadedFile ? (
+                  <div className="flex items-center gap-3">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.txt"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }}
+                      disabled={isUploading || isParsing || !apiKey.trim()}
+                      className="flex items-center gap-2 px-4 py-2"
+                      variant="outline"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {isUploading ? 'Uploading...' : isParsing ? 'Processing...' : 'Upload Document'}
+                    </Button>
+                    <p className="text-xs text-gray-500">Max 10MB • PDF or TXT files only</p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                    <FileText className="h-5 w-5 text-green-600" />
+                    <div className="flex flex-col flex-1">
+                      <span className="text-sm font-medium text-green-800">{uploadedFile.name}</span>
+                      <span className="text-xs text-green-600">{formatFileSize(uploadedFile.size)}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removeUploadedFile();
+                      }}
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-green-600 hover:text-green-800 hover:bg-green-100"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <textarea
+                value={userMessage}
+                onChange={(e) => setUserMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={isParsing ? "Document is being processed... Please wait..." : "Type your message here... (Press Enter to send, Shift+Enter for new line)"}
+                disabled={isLoading || isParsing}
+                rows={3}
+                className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent disabled:opacity-50 resize-none"
+                style={{ '--tw-ring-color': '#266CA9' } as React.CSSProperties}
+              />
+            </div>
             <button
               type="submit"
-              disabled={isLoading || !userMessage.trim()}
-              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400 self-end"
+              disabled={isLoading || isParsing || !userMessage.trim() || !apiKey.trim()}
+              onClick={(e) => {
+                if (!apiKey.trim() || !userMessage.trim()) {
+                  e.preventDefault();
+                  alert('Please enter both API key and message');
+                  return;
+                }
+              }}
+              className="px-6 py-3 text-white font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 self-end disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ 
+                backgroundColor: !apiKey.trim() ? '#9CA3AF' : '#266CA9',
+                '--tw-ring-color': '#266CA9'
+              } as React.CSSProperties}
+              onMouseEnter={(e) => {
+                if (apiKey.trim()) {
+                  e.currentTarget.style.backgroundColor = '#1e5a8a';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (apiKey.trim()) {
+                  e.currentTarget.style.backgroundColor = '#266CA9';
+                }
+              }}
             >
-              {isLoading ? '⏳' : '🚀'}
+              {isLoading ? '⏳' : isParsing ? '📄' : 'Send'}
             </button>
           </div>
-          <p className="text-purple-200 text-xs mt-2">
+          <p className="text-gray-600 text-xs mt-2">
             💡 Press <kbd className="bg-white/20 px-1 rounded">Enter</kbd> to send, <kbd className="bg-white/20 px-1 rounded">Shift+Enter</kbd> for new line
           </p>
         </form>
