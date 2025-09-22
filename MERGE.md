@@ -1,7 +1,7 @@
-# Image Upload Feature - Merge Instructions
+# Image Upload & Dynamic Placeholder Messages - Merge Instructions
 
 ## Overview
-This feature adds image upload functionality to the AI chat application, allowing users to upload JPG/JPEG images (max 10MB) and have the AI analyze them using vision models.
+This feature adds image upload functionality to the AI chat application, allowing users to upload JPG/JPEG images (max 10MB) and have the AI analyze them using vision models. Additionally, it includes dynamic placeholder messages that appear when the chat is empty, providing engaging prompts to users.
 
 ## Changes Made
 
@@ -12,7 +12,7 @@ This feature adds image upload functionality to the AI chat application, allowin
 - **Updated**: `api/requirements.txt` - Added Pillow dependency
 
 ### Frontend
-- **Updated**: `frontend/src/app/page.tsx` - Added image upload UI and functionality
+- **Updated**: `frontend/src/app/page.tsx` - Added image upload UI, functionality, and dynamic placeholder messages
 
 ## Features Added
 1. **Image Upload**: Users can upload JPG/JPEG images up to 10MB
@@ -20,6 +20,9 @@ This feature adds image upload functionality to the AI chat application, allowin
 3. **Vision Support**: AI can analyze and answer questions about uploaded images
 4. **Dual Mode**: Supports both document (PDF/TXT) and image modes
 5. **Validation**: Client and server-side validation for file types and sizes
+6. **Dynamic Placeholder Messages**: Engaging messages appear when chat is empty
+7. **Auto-rotating Messages**: Placeholder messages change every 3 seconds
+8. **Smooth Animations**: Subtle pulse animation for better user experience
 
 ## Merge Instructions
 
@@ -62,9 +65,12 @@ This feature adds image upload functionality to the AI chat application, allowin
 After merging, test the following:
 1. Start the API server: `cd api && python app.py`
 2. Start the frontend: `cd frontend && npm run dev`
-3. Upload a JPG/JPEG image
-4. Ask questions about the image
-5. Verify the AI can analyze the image content
+3. **Test placeholder messages**: Open the app and verify placeholder messages appear when chat is empty
+4. **Test message rotation**: Wait 3 seconds to see messages change automatically
+5. Upload a JPG/JPEG image
+6. Ask questions about the image
+7. Verify the AI can analyze the image content
+8. **Test message hiding**: Send a message and verify placeholder disappears
 
 ## Dependencies
 - **New**: Pillow==10.0.0 (for image processing)
@@ -75,3 +81,6 @@ After merging, test the following:
 - The feature maintains backward compatibility with existing document upload functionality
 - Image uploads are validated both client-side and server-side
 - The UI clearly indicates when in image mode vs document mode
+- Placeholder messages include 9 different engaging prompts
+- Messages rotate every 3 seconds only when chat is empty
+- Placeholder messages are hidden during loading, parsing, or when messages exist
