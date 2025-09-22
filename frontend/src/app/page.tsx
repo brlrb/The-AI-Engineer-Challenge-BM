@@ -7,7 +7,7 @@ import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Settings, Upload, FileText, X } from 'lucide-react';
+import { Settings, Upload, FileText, X, Trash2 } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -362,6 +362,13 @@ export default function Home() {
     setMessages(prev => prev.filter(msg => msg.role !== 'system'));
   };
 
+  const clearChat = () => {
+    setMessages([]);
+    setCurrentResponse('');
+    setUserMessage('');
+    // Don't clear uploaded file or context as user might want to continue with the same document
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Settings Button - Top Left */}
@@ -525,8 +532,29 @@ export default function Home() {
         </div>
 
 
+        {/* Chat Toolbar */}
+        <div className="bg-[#FAFAFA] backdrop-blur-sm rounded-t-lg border-t border-l border-r border-[#bbb] px-6 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">💬 Chat</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {messages.length > 0 && (
+              <Button
+                onClick={clearChat}
+                variant="ghost"
+                size="sm"
+                className="text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors"
+                title="Clear chat history"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Clear Chat
+              </Button>
+            )}
+          </div>
+        </div>
+
         {/* Chat Messages */}
-        <div className="bg-[#FAFAFA] backdrop-blur-sm rounded-lg p-6 mb-6 h-96 overflow-y-auto border border-[#bbb]">
+        <div className="bg-[#FAFAFA] backdrop-blur-sm rounded-b-lg p-6 mb-6 h-96 overflow-y-auto border-l border-r border-b border-[#bbb]">
           <div className="space-y-4">
             {/* Placeholder message when chat is empty */}
             {messages.length === 0 && !isLoading && !isParsing && (
