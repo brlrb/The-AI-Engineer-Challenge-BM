@@ -24,6 +24,19 @@ interface UploadedFile {
   fileType: 'document' | 'image';
 }
 
+// Placeholder messages for empty chat state
+const PLACEHOLDER_MESSAGES = [
+  "👋 Hi there! What's on your mind today?",
+  "Start a conversation… I'm here to help.",
+  "Ask me anything — from quick facts to deep dives.",
+  "Type your question or task here…",
+  "Need ideas? Try: 'Summarize this article' or 'Plan a 3-day trip to Paris'.",
+  "What would you like to do today? (Brainstorm, Research, Write, Plan…)",
+  "✨ Got a thought? Let's explore it together.",
+  "Ask me anything — serious or silly.",
+  "🤔 Not sure where to start? Try: 'Tell me something interesting'."
+];
+
 export default function Home() {
   const [apiKey, setApiKey] = useState('');
   const [userMessage, setUserMessage] = useState('');
@@ -40,11 +53,18 @@ export default function Home() {
   const [isUploading, setIsUploading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [hasContext, setHasContext] = useState(false);
+  const [placeholderMessage, setPlaceholderMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Function to get a random placeholder message
+  const getRandomPlaceholderMessage = () => {
+    const randomIndex = Math.floor(Math.random() * PLACEHOLDER_MESSAGES.length);
+    return PLACEHOLDER_MESSAGES[randomIndex];
   };
 
   const getAvailableModels = () => {
@@ -107,6 +127,22 @@ export default function Home() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, currentResponse]);
+
+  // Initialize placeholder message on component mount
+  useEffect(() => {
+    setPlaceholderMessage(getRandomPlaceholderMessage());
+  }, []);
+
+  // Change placeholder message periodically when chat is empty
+  useEffect(() => {
+    if (messages.length === 0) {
+      const interval = setInterval(() => {
+        setPlaceholderMessage(getRandomPlaceholderMessage());
+      }, 3000); // Change every 3 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [messages.length]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
@@ -485,6 +521,18 @@ export default function Home() {
         {/* Chat Messages */}
         <div className="bg-[#FAFAFA] backdrop-blur-sm rounded-lg p-6 mb-6 h-96 overflow-y-auto border border-[#bbb]">
           <div className="space-y-4">
+            {/* Placeholder message when chat is empty */}
+            {messages.length === 0 && !isLoading && !isParsing && (
+              <div className="flex justify-center items-center h-full">
+                <div className="text-center">
+                  <div className="text-2xl mb-4">💬</div>
+                  <p className="text-[#696969] text-lg font-medium animate-pulse">
+                    {placeholderMessage}
+                  </p>
+                </div>
+              </div>
+            )}
+            
             {messages.map((message, index) => (
               <div
                 key={index}
