@@ -1,20 +1,20 @@
 """
 Image processing utilities for the aimakerspace library.
 Handles image validation, processing, and preparation for AI model consumption.
+Uses only built-in Python libraries.
 """
 
 import os
 import base64
 from typing import Optional, Tuple
-from PIL import Image
 import io
 
 
 class ImageProcessor:
-    """Handles image processing and validation for AI model consumption."""
+    """Handles image processing and validation for AI model consumption using built-in libraries."""
     
     # Supported image formats
-    SUPPORTED_FORMATS = ['JPEG', 'JPG']
+    SUPPORTED_EXTENSIONS = ['.jpg', '.jpeg']
     SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/jpg']
     
     # Maximum file size (10MB)
@@ -26,7 +26,7 @@ class ImageProcessor:
     
     def validate_image(self, file_path: str) -> Tuple[bool, str]:
         """
-        Validate an image file for format and size.
+        Validate an image file for format and size using built-in libraries.
         
         Args:
             file_path: Path to the image file
@@ -44,14 +44,17 @@ class ImageProcessor:
             if not os.path.exists(file_path):
                 return False, "File does not exist"
             
-            # Try to open and validate the image
-            with Image.open(file_path) as img:
-                # Check format
-                if img.format not in self.SUPPORTED_FORMATS:
-                    return False, f"Unsupported image format: {img.format}. Only JPEG/JPG are supported."
-                
-                # Check if image can be loaded properly
-                img.verify()
+            # Check file extension
+            file_ext = os.path.splitext(file_path)[1].lower()
+            if file_ext not in self.SUPPORTED_EXTENSIONS:
+                return False, f"Unsupported image format: {file_ext}. Only JPG/JPEG are supported."
+            
+            # Basic validation by reading file header
+            with open(file_path, 'rb') as f:
+                header = f.read(4)
+                # Check for JPEG magic numbers
+                if not (header[0] == 0xFF and header[1] == 0xD8):
+                    return False, "Invalid JPEG file format"
                 
             return True, ""
             
@@ -61,6 +64,7 @@ class ImageProcessor:
     def process_image(self, file_path: str) -> Optional[str]:
         """
         Process an image file and return base64 encoded string.
+        For simplicity, we'll just read the file and encode it directly.
         
         Args:
             file_path: Path to the image file
@@ -74,25 +78,10 @@ class ImageProcessor:
             if not is_valid:
                 raise ValueError(error_msg)
             
-            # Open and process the image
-            with Image.open(file_path) as img:
-                # Convert to RGB if necessary (handles RGBA, P, etc.)
-                if img.mode != 'RGB':
-                    img = img.convert('RGB')
-                
-                # Resize if too large (optional optimization)
-                max_dimension = 2048
-                if max(img.size) > max_dimension:
-                    img.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
-                
-                # Convert to base64
-                buffer = io.BytesIO()
-                img.save(buffer, format='JPEG', quality=85, optimize=True)
-                buffer.seek(0)
-                
-                # Encode to base64
-                image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
-                
+            # Read the image file and encode to base64
+            with open(file_path, 'rb') as f:
+                image_data = f.read()
+                image_base64 = base64.b64encode(image_data).decode('utf-8')
                 return image_base64
                 
         except Exception as e:
@@ -101,7 +90,7 @@ class ImageProcessor:
     
     def get_image_info(self, file_path: str) -> Optional[dict]:
         """
-        Get image information without processing.
+        Get basic image information without external libraries.
         
         Args:
             file_path: Path to the image file
@@ -110,15 +99,14 @@ class ImageProcessor:
             Dictionary with image info or None if error
         """
         try:
-            with Image.open(file_path) as img:
-                return {
-                    'format': img.format,
-                    'mode': img.mode,
-                    'size': img.size,
-                    'width': img.width,
-                    'height': img.height,
-                    'file_size': os.path.getsize(file_path)
-                }
+            file_size = os.path.getsize(file_path)
+            file_ext = os.path.splitext(file_path)[1].lower()
+            
+            return {
+                'format': file_ext.upper().replace('.', ''),
+                'file_size': file_size,
+                'filename': os.path.basename(file_path)
+            }
         except Exception as e:
             print(f"Error getting image info: {str(e)}")
             return None

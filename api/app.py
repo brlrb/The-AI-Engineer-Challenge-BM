@@ -51,15 +51,16 @@ class ChatRequest(BaseModel):
     style: Optional[Dict[str, int]] = None  # Style parameters
     has_context: Optional[bool] = False  # Whether document context is available
 
-# File upload endpoint for PDF and TXT files
+# Unified file upload endpoint for PDF, TXT, and image files
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...), api_key: str = Form(...)):
-    global vector_db, current_document_name, embedding_model
+    global vector_db, current_document_name, embedding_model, current_image
     
     try:
         # Validate file type
-        if file.content_type not in ["application/pdf", "text/plain"]:
-            raise HTTPException(status_code=400, detail="Only PDF and TXT files are allowed")
+        allowed_types = ["application/pdf", "text/plain", "image/jpeg", "image/jpg"]
+        if file.content_type not in allowed_types:
+            raise HTTPException(status_code=400, detail="Only PDF, TXT, and JPG/JPEG files are allowed")
         
         # Validate file size (10MB limit)
         content = await file.read()
@@ -72,41 +73,74 @@ async def upload_file(file: UploadFile = File(...), api_key: str = Form(...)):
             temp_file_path = temp_file.name
         
         try:
-            # Initialize embedding model with API key
-            os.environ["OPENAI_API_KEY"] = api_key
-            embedding_model = EmbeddingModel()
+            # Handle image files
+            if file.content_type in ["image/jpeg", "image/jpg"]:
+                # Process the image using aimakerspace
+                image_handler = ImageUploadHandler()
+                result = image_handler.handle_upload(content, file.filename)
+                
+                if not result['success']:
+                    raise HTTPException(status_code=400, detail=result['error'])
+                
+                # Store the processed image
+                current_image = {
+                    'filename': result['filename'],
+                    'image_base64': result['image_base64'],
+                    'image_info': result['image_info']
+                }
+                
+                # Clear document context when uploading image
+                vector_db = None
+                current_document_name = None
+                
+                return {
+                    "message": "Image uploaded and processed successfully",
+                    "filename": result['filename'],
+                    "image_info": result['image_info'],
+                    "file_type": "image"
+                }
             
-            # Update the clients with the API key
-            embedding_model.async_client = AsyncOpenAI(api_key=api_key)
-            embedding_model.client = OpenAI(api_key=api_key)
-            
-            # Process the file based on type
-            if file.content_type == "application/pdf":
-                pdf_loader = PDFLoader(temp_file_path)
-                pdf_loader.load_file()
-                documents = pdf_loader.documents
-            else:  # text/plain
-                text_loader = TextFileLoader(temp_file_path)
-                text_loader.load_file()
-                documents = text_loader.documents
-            
-            # Split documents into chunks
-            splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-            chunks = splitter.split_texts(documents)
-            
-            # Create vector database and populate it
-            vector_db = VectorDatabase(embedding_model)
-            await vector_db.abuild_from_list(chunks)
-            
-            # Store document name
-            current_document_name = file.filename
-            
-            return {
-                "message": "File uploaded and processed successfully",
-                "filename": file.filename,
-                "chunks_created": len(chunks),
-                "document_type": file.content_type
-            }
+            # Handle document files (PDF/TXT)
+            else:
+                # Initialize embedding model with API key
+                os.environ["OPENAI_API_KEY"] = api_key
+                embedding_model = EmbeddingModel()
+                
+                # Update the clients with the API key
+                embedding_model.async_client = AsyncOpenAI(api_key=api_key)
+                embedding_model.client = OpenAI(api_key=api_key)
+                
+                # Process the file based on type
+                if file.content_type == "application/pdf":
+                    pdf_loader = PDFLoader(temp_file_path)
+                    pdf_loader.load_file()
+                    documents = pdf_loader.documents
+                else:  # text/plain
+                    text_loader = TextFileLoader(temp_file_path)
+                    text_loader.load_file()
+                    documents = text_loader.documents
+                
+                # Split documents into chunks
+                splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+                chunks = splitter.split_texts(documents)
+                
+                # Create vector database and populate it
+                vector_db = VectorDatabase(embedding_model)
+                await vector_db.abuild_from_list(chunks)
+                
+                # Store document name
+                current_document_name = file.filename
+                
+                # Clear image context when uploading document
+                current_image = None
+                
+                return {
+                    "message": "File uploaded and processed successfully",
+                    "filename": file.filename,
+                    "chunks_created": len(chunks),
+                    "document_type": file.content_type,
+                    "file_type": "document"
+                }
             
         finally:
             # Clean up temporary file
@@ -114,44 +148,6 @@ async def upload_file(file: UploadFile = File(...), api_key: str = Form(...)):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
-
-# Image upload endpoint for JPG/JPEG files
-@app.post("/api/upload-image")
-async def upload_image(file: UploadFile = File(...), api_key: str = Form(...)):
-    global current_image
-    
-    try:
-        # Validate file type
-        if file.content_type not in ["image/jpeg", "image/jpg"]:
-            raise HTTPException(status_code=400, detail="Only JPG and JPEG images are allowed")
-        
-        # Validate file size (10MB limit)
-        content = await file.read()
-        if len(content) > 10 * 1024 * 1024:  # 10MB
-            raise HTTPException(status_code=400, detail="Image size must be less than 10MB")
-        
-        # Process the image using aimakerspace
-        image_handler = ImageUploadHandler()
-        result = image_handler.handle_upload(content, file.filename)
-        
-        if not result['success']:
-            raise HTTPException(status_code=400, detail=result['error'])
-        
-        # Store the processed image
-        current_image = {
-            'filename': result['filename'],
-            'image_base64': result['image_base64'],
-            'image_info': result['image_info']
-        }
-        
-        return {
-            "message": "Image uploaded and processed successfully",
-            "filename": result['filename'],
-            "image_info": result['image_info']
-        }
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
 
 # Define the main chat endpoint that handles POST requests
 @app.post("/api/chat")
@@ -186,6 +182,13 @@ async def chat(request: ChatRequest):
                 {context}
                 
                 Please answer the user's question based only on the information provided in the document context above."""
+                
+                messages[0]["content"] = system_content
+            elif request.has_context and current_image is not None:
+                # Handle image context
+                system_content = f"""You are a helpful AI assistant that can analyze and answer questions about images. 
+                
+                The user has uploaded an image and wants you to analyze it. Please provide detailed and helpful responses about what you see in the image."""
                 
                 messages[0]["content"] = system_content
             

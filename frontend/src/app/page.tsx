@@ -19,13 +19,8 @@ interface UploadedFile {
   name: string;
   type: string;
   size: number;
-}
-
-interface UploadedImage {
-  name: string;
-  type: string;
-  size: number;
-  url: string;
+  url?: string; // For image preview
+  fileType: 'document' | 'image';
 }
 
 export default function Home() {
@@ -41,14 +36,11 @@ export default function Home() {
   const [professionalism, setProfessionalism] = useState(50);
   const [engagement, setEngagement] = useState(50);
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
-  const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [hasContext, setHasContext] = useState(false);
-  const [hasImage, setHasImage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -238,9 +230,9 @@ export default function Home() {
     console.log('API key provided, starting upload...');
 
     // Validate file type
-    const allowedTypes = ['application/pdf', 'text/plain'];
+    const allowedTypes = ['application/pdf', 'text/plain', 'image/jpeg', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
-      alert('Please upload only PDF or TXT files.');
+      alert('Please upload only PDF, TXT, or JPG/JPEG files.');
       return;
     }
 
@@ -251,12 +243,22 @@ export default function Home() {
       return;
     }
 
+    // Determine file type
+    const isImage = file.type.startsWith('image/');
+    const fileType = isImage ? 'image' : 'document';
+
     setIsUploading(true);
     setIsParsing(true);
+    
+    // Create preview URL for images
+    const fileUrl = isImage ? URL.createObjectURL(file) : undefined;
+    
     setUploadedFile({
       name: file.name,
       type: file.type,
-      size: file.size
+      size: file.size,
+      url: fileUrl,
+      fileType: fileType
     });
 
     try {
@@ -285,14 +287,16 @@ export default function Home() {
       }
 
       const result = await response.json();
-      console.log('File uploaded and indexed:', result);
+      console.log('File uploaded and processed:', result);
       console.log('Setting hasContext to true');
       setHasContext(true);
       
-      // Add system message about the uploaded document
+      // Add system message about the uploaded file
       const systemMsg: Message = {
         role: 'system',
-        content: `✅ Document "${file.name}" has been successfully uploaded and processed! I will now answer questions based on the content of this document.`,
+        content: isImage 
+          ? `🖼️ Image "${file.name}" has been successfully uploaded! I can now analyze and answer questions about this image.`
+          : `✅ Document "${file.name}" has been successfully uploaded and processed! I will now answer questions based on the content of this document.`,
         timestamp: new Date()
       };
       console.log('Adding system message:', systemMsg);
@@ -303,7 +307,9 @@ export default function Home() {
       const fileExtension = fileName.split('.').pop()?.toUpperCase() || '';
       const autoPromptMsg: Message = {
         role: 'assistant',
-        content: `🎉 Great! I've successfully analyzed your ${fileExtension} document "${fileName}" and I'm now ready to answer questions based on its content. What would you like to know about this document?`,
+        content: isImage
+          ? `🎉 Great! I've successfully uploaded your image "${fileName}" and I'm now ready to analyze it and answer questions about what I see. What would you like to know about this image?`
+          : `🎉 Great! I've successfully analyzed your ${fileExtension} document "${fileName}" and I'm now ready to answer questions based on its content. What would you like to know about this document?`,
         timestamp: new Date()
       };
       console.log('Adding auto prompt message:', autoPromptMsg);
@@ -320,109 +326,12 @@ export default function Home() {
   };
 
   const removeUploadedFile = () => {
+    if (uploadedFile?.url) {
+      URL.revokeObjectURL(uploadedFile.url);
+    }
     setUploadedFile(null);
     setHasContext(false);
     setIsParsing(false);
-    setMessages(prev => prev.filter(msg => msg.role !== 'system'));
-  };
-
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    console.log('Image selected:', file.name, file.type, file.size);
-
-    // Check if API key is provided
-    if (!apiKey.trim()) {
-      alert('Please enter your API key before uploading an image.');
-      return;
-    }
-
-    console.log('API key provided, starting image upload...');
-
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg'];
-    if (!allowedTypes.includes(file.type)) {
-      alert('Please upload only JPG or JPEG images.');
-      return;
-    }
-
-    // Validate file size (10MB limit)
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxSize) {
-      alert('Image size must be less than 10MB.');
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadedImage({
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      url: URL.createObjectURL(file)
-    });
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('api_key', apiKey);
-
-      const apiUrl = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
-                      ? 'http://127.0.0.1:8000/api/upload-image'
-                      : '/api/upload-image';
-
-      console.log('Uploading image to:', apiUrl);
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        body: formData,
-      });
-
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Upload failed: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('Image uploaded successfully:', result);
-      setHasImage(true);
-      
-      // Add system message about the uploaded image
-      const systemMsg: Message = {
-        role: 'system',
-        content: `🖼️ Image "${file.name}" has been successfully uploaded! I can now analyze and answer questions about this image.`,
-        timestamp: new Date()
-      };
-      console.log('Adding system message:', systemMsg);
-      setMessages(prev => [...prev, systemMsg]);
-      
-      // Add automatic AI prompt message
-      const autoPromptMsg: Message = {
-        role: 'assistant',
-        content: `🎉 Great! I've successfully uploaded your image "${file.name}" and I'm now ready to analyze it and answer questions about what I see. What would you like to know about this image?`,
-        timestamp: new Date()
-      };
-      console.log('Adding auto prompt message:', autoPromptMsg);
-      setMessages(prev => [...prev, autoPromptMsg]);
-
-    } catch (error) {
-      console.error('Image upload error:', error);
-      alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      setUploadedImage(null);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const removeUploadedImage = () => {
-    if (uploadedImage?.url) {
-      URL.revokeObjectURL(uploadedImage.url);
-    }
-    setUploadedImage(null);
-    setHasImage(false);
     setMessages(prev => prev.filter(msg => msg.role !== 'system'));
   };
 
@@ -579,13 +488,12 @@ export default function Home() {
           <p className="text-black text-lg">
             Using <span className="font-semibold text-black">{model}</span> from <span className="font-semibold text-black">{getProviderDisplayName()}</span>
             {hasContext && uploadedFile && (
-              <span className="ml-2 text-sm text-green-600 font-medium">
-                📄 Document Mode: {uploadedFile.name}
-              </span>
-            )}
-            {hasImage && uploadedImage && (
-              <span className="ml-2 text-sm text-blue-600 font-medium">
-                🖼️ Image Mode: {uploadedImage.name}
+              <span className="ml-2 text-sm font-medium">
+                {uploadedFile.fileType === 'image' ? (
+                  <span className="text-blue-600">🖼️ Image Mode: {uploadedFile.name}</span>
+                ) : (
+                  <span className="text-green-600">📄 Document Mode: {uploadedFile.name}</span>
+                )}
               </span>
             )}
           </p>
@@ -826,14 +734,14 @@ export default function Home() {
         <form onSubmit={handleSubmit} className="bg-[#FAFAFA] backdrop-blur-sm rounded-lg p-6 border border-[#bbb]">
           <div className="flex gap-4">
             <div className="flex-1 flex flex-col gap-4">
-              {/* Document Upload Section */}
+              {/* File Upload Section */}
               <div>
                 {!uploadedFile ? (
                   <div className="flex items-center gap-3">
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".pdf,.txt"
+                      accept=".pdf,.txt,.jpg,.jpeg,image/jpeg,image/jpg"
                       onChange={handleFileUpload}
                       className="hidden"
                     />
@@ -848,16 +756,36 @@ export default function Home() {
                       variant="outline"
                     >
                       <Upload className="h-4 w-4" />
-                      {isUploading ? 'Uploading...' : isParsing ? 'Processing...' : 'Upload Document'}
+                      {isUploading ? 'Uploading...' : isParsing ? 'Processing...' : 'Upload File'}
                     </Button>
-                    <p className="text-xs text-gray-500">Max 10MB • PDF or TXT files only</p>
+                    <p className="text-xs text-gray-500">Max 10MB • PDF, TXT, or JPG/JPEG files</p>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-                    <FileText className="h-5 w-5 text-green-600" />
+                  <div className={`flex items-center gap-3 rounded-lg px-4 py-3 ${
+                    uploadedFile.fileType === 'image' 
+                      ? 'bg-blue-50 border border-blue-200' 
+                      : 'bg-green-50 border border-green-200'
+                  }`}>
+                    {uploadedFile.fileType === 'image' ? (
+                      <img 
+                        src={uploadedFile.url} 
+                        alt={uploadedFile.name}
+                        className="h-8 w-8 object-cover rounded"
+                      />
+                    ) : (
+                      <FileText className="h-5 w-5 text-green-600" />
+                    )}
                     <div className="flex flex-col flex-1">
-                      <span className="text-sm font-medium text-green-800">{uploadedFile.name}</span>
-                      <span className="text-xs text-green-600">{formatFileSize(uploadedFile.size)}</span>
+                      <span className={`text-sm font-medium ${
+                        uploadedFile.fileType === 'image' ? 'text-blue-800' : 'text-green-800'
+                      }`}>
+                        {uploadedFile.name}
+                      </span>
+                      <span className={`text-xs ${
+                        uploadedFile.fileType === 'image' ? 'text-blue-600' : 'text-green-600'
+                      }`}>
+                        {formatFileSize(uploadedFile.size)}
+                      </span>
                     </div>
                     <Button
                       type="button"
@@ -867,60 +795,11 @@ export default function Home() {
                       }}
                       size="sm"
                       variant="ghost"
-                      className="h-8 w-8 p-0 text-green-600 hover:text-green-800 hover:bg-green-100"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Image Upload Section */}
-              <div>
-                {!uploadedImage ? (
-                  <div className="flex items-center gap-3">
-                    <input
-                      ref={imageInputRef}
-                      type="file"
-                      accept=".jpg,.jpeg,image/jpeg,image/jpg"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                    <Button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        imageInputRef.current?.click();
-                      }}
-                      disabled={isUploading || !apiKey.trim()}
-                      className="flex items-center gap-2 px-4 py-2"
-                      variant="outline"
-                    >
-                      <Upload className="h-4 w-4" />
-                      {isUploading ? 'Uploading...' : 'Upload Image'}
-                    </Button>
-                    <p className="text-xs text-gray-500">Max 10MB • JPG/JPEG files only</p>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                    <img 
-                      src={uploadedImage.url} 
-                      alt={uploadedImage.name}
-                      className="h-8 w-8 object-cover rounded"
-                    />
-                    <div className="flex flex-col flex-1">
-                      <span className="text-sm font-medium text-blue-800">{uploadedImage.name}</span>
-                      <span className="text-xs text-blue-600">{formatFileSize(uploadedImage.size)}</span>
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        removeUploadedImage();
-                      }}
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                      className={`h-8 w-8 p-0 hover:bg-opacity-20 ${
+                        uploadedFile.fileType === 'image' 
+                          ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-100' 
+                          : 'text-green-600 hover:text-green-800 hover:bg-green-100'
+                      }`}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -965,7 +844,7 @@ export default function Home() {
                 }
               }}
             >
-              {isLoading ? '⏳' : isParsing ? '📄' : hasImage ? '🖼️' : 'Send'}
+              {isLoading ? '⏳' : isParsing ? '📄' : uploadedFile?.fileType === 'image' ? '🖼️' : 'Send'}
             </button>
           </div>
           <p className="text-gray-600 text-xs mt-2">
