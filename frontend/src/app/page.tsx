@@ -125,7 +125,10 @@ export default function Home() {
   }, [provider]);
 
   useEffect(() => {
-    scrollToBottom();
+    // Only scroll to bottom if there are messages or a response is being streamed
+    if (messages.length > 0 || currentResponse) {
+      scrollToBottom();
+    }
   }, [messages, currentResponse]);
 
   // Initialize placeholder message on component mount
