@@ -489,15 +489,6 @@ export default function Home() {
           </h1>
           <p className="text-black text-lg">
             Using <span className="font-semibold text-black">{model}</span> from <span className="font-semibold text-black">{getProviderDisplayName()}</span>
-            {hasContext && uploadedFile && (
-              <span className="ml-2 text-sm font-medium">
-                {uploadedFile.fileType === 'image' ? (
-                  <span className="text-blue-600">🖼️ Image Mode: {uploadedFile.name}</span>
-                ) : (
-                  <span className="text-green-600">📄 Document Mode: {uploadedFile.name}</span>
-                )}
-              </span>
-            )}
           </p>
         </div>
 
