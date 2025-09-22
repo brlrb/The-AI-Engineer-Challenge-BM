@@ -518,6 +518,9 @@ export default function Home() {
           </h1>
           <p className="text-black text-lg">
             Using <span className="font-semibold text-black">{model}</span> from <span className="font-semibold text-black">{getProviderDisplayName()}</span>
+            {!apiKey.trim() && (
+              <span className="text-red-500 text-sm ml-2">• API key is missing</span>
+            )}
           </p>
         </div>
 
