@@ -188,6 +188,8 @@ async def chat(request: ChatRequest):
                 # Handle image context
                 system_content = f"""You are a helpful AI assistant that can analyze and answer questions about images. 
                 
+                IMPORTANT: You should ONLY answer questions based on the Image. If the question cannot be answered from the image context, politely explain that you can only answer questions about the uploaded image.
+
                 The user has uploaded an image and wants you to analyze it. Please provide detailed and helpful responses about what you see in the image."""
                 
                 messages[0]["content"] = system_content
