@@ -21,6 +21,13 @@ interface UploadedFile {
   size: number;
 }
 
+interface UploadedImage {
+  name: string;
+  type: string;
+  size: number;
+  url: string;
+}
+
 export default function Home() {
   const [apiKey, setApiKey] = useState('');
   const [userMessage, setUserMessage] = useState('');
@@ -34,11 +41,14 @@ export default function Home() {
   const [professionalism, setProfessionalism] = useState(50);
   const [engagement, setEngagement] = useState(50);
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [hasContext, setHasContext] = useState(false);
+  const [hasImage, setHasImage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -316,6 +326,106 @@ export default function Home() {
     setMessages(prev => prev.filter(msg => msg.role !== 'system'));
   };
 
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    console.log('Image selected:', file.name, file.type, file.size);
+
+    // Check if API key is provided
+    if (!apiKey.trim()) {
+      alert('Please enter your API key before uploading an image.');
+      return;
+    }
+
+    console.log('API key provided, starting image upload...');
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please upload only JPG or JPEG images.');
+      return;
+    }
+
+    // Validate file size (10MB limit)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      alert('Image size must be less than 10MB.');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadedImage({
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      url: URL.createObjectURL(file)
+    });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', apiKey);
+
+      const apiUrl = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+                      ? 'http://127.0.0.1:8000/api/upload-image'
+                      : '/api/upload-image';
+
+      console.log('Uploading image to:', apiUrl);
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Upload failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Image uploaded successfully:', result);
+      setHasImage(true);
+      
+      // Add system message about the uploaded image
+      const systemMsg: Message = {
+        role: 'system',
+        content: `🖼️ Image "${file.name}" has been successfully uploaded! I can now analyze and answer questions about this image.`,
+        timestamp: new Date()
+      };
+      console.log('Adding system message:', systemMsg);
+      setMessages(prev => [...prev, systemMsg]);
+      
+      // Add automatic AI prompt message
+      const autoPromptMsg: Message = {
+        role: 'assistant',
+        content: `🎉 Great! I've successfully uploaded your image "${file.name}" and I'm now ready to analyze it and answer questions about what I see. What would you like to know about this image?`,
+        timestamp: new Date()
+      };
+      console.log('Adding auto prompt message:', autoPromptMsg);
+      setMessages(prev => [...prev, autoPromptMsg]);
+
+    } catch (error) {
+      console.error('Image upload error:', error);
+      alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setUploadedImage(null);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const removeUploadedImage = () => {
+    if (uploadedImage?.url) {
+      URL.revokeObjectURL(uploadedImage.url);
+    }
+    setUploadedImage(null);
+    setHasImage(false);
+    setMessages(prev => prev.filter(msg => msg.role !== 'system'));
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Settings Button - Top Left */}
@@ -471,6 +581,11 @@ export default function Home() {
             {hasContext && uploadedFile && (
               <span className="ml-2 text-sm text-green-600 font-medium">
                 📄 Document Mode: {uploadedFile.name}
+              </span>
+            )}
+            {hasImage && uploadedImage && (
+              <span className="ml-2 text-sm text-blue-600 font-medium">
+                🖼️ Image Mode: {uploadedImage.name}
               </span>
             )}
           </p>
@@ -760,6 +875,59 @@ export default function Home() {
                 )}
               </div>
 
+              {/* Image Upload Section */}
+              <div>
+                {!uploadedImage ? (
+                  <div className="flex items-center gap-3">
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept=".jpg,.jpeg,image/jpeg,image/jpg"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        imageInputRef.current?.click();
+                      }}
+                      disabled={isUploading || !apiKey.trim()}
+                      className="flex items-center gap-2 px-4 py-2"
+                      variant="outline"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {isUploading ? 'Uploading...' : 'Upload Image'}
+                    </Button>
+                    <p className="text-xs text-gray-500">Max 10MB • JPG/JPEG files only</p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                    <img 
+                      src={uploadedImage.url} 
+                      alt={uploadedImage.name}
+                      className="h-8 w-8 object-cover rounded"
+                    />
+                    <div className="flex flex-col flex-1">
+                      <span className="text-sm font-medium text-blue-800">{uploadedImage.name}</span>
+                      <span className="text-xs text-blue-600">{formatFileSize(uploadedImage.size)}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removeUploadedImage();
+                      }}
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
               <textarea
                 value={userMessage}
                 onChange={(e) => setUserMessage(e.target.value)}
@@ -797,7 +965,7 @@ export default function Home() {
                 }
               }}
             >
-              {isLoading ? '⏳' : isParsing ? '📄' : 'Send'}
+              {isLoading ? '⏳' : isParsing ? '📄' : hasImage ? '🖼️' : 'Send'}
             </button>
           </div>
           <p className="text-gray-600 text-xs mt-2">

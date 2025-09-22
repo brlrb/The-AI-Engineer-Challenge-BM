@@ -20,6 +20,7 @@ from aimakerspace.vectordatabase import VectorDatabase
 from aimakerspace.text_utils import PDFLoader, TextFileLoader, CharacterTextSplitter
 from aimakerspace.openai_utils.embedding import EmbeddingModel
 from aimakerspace.openai_utils.chatmodel import ChatOpenAI
+from aimakerspace.image_utils import ImageUploadHandler
 
 # Initialize FastAPI application with a title
 app = FastAPI(title="OpenAI Chat API")
@@ -38,6 +39,7 @@ app.add_middleware(
 vector_db: Optional[VectorDatabase] = None
 current_document_name: Optional[str] = None
 embedding_model: Optional[EmbeddingModel] = None
+current_image: Optional[dict] = None
 
 # Define the data model for chat requests using Pydantic
 # This ensures incoming request data is properly validated
@@ -113,10 +115,48 @@ async def upload_file(file: UploadFile = File(...), api_key: str = Form(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
+# Image upload endpoint for JPG/JPEG files
+@app.post("/api/upload-image")
+async def upload_image(file: UploadFile = File(...), api_key: str = Form(...)):
+    global current_image
+    
+    try:
+        # Validate file type
+        if file.content_type not in ["image/jpeg", "image/jpg"]:
+            raise HTTPException(status_code=400, detail="Only JPG and JPEG images are allowed")
+        
+        # Validate file size (10MB limit)
+        content = await file.read()
+        if len(content) > 10 * 1024 * 1024:  # 10MB
+            raise HTTPException(status_code=400, detail="Image size must be less than 10MB")
+        
+        # Process the image using aimakerspace
+        image_handler = ImageUploadHandler()
+        result = image_handler.handle_upload(content, file.filename)
+        
+        if not result['success']:
+            raise HTTPException(status_code=400, detail=result['error'])
+        
+        # Store the processed image
+        current_image = {
+            'filename': result['filename'],
+            'image_base64': result['image_base64'],
+            'image_info': result['image_info']
+        }
+        
+        return {
+            "message": "Image uploaded and processed successfully",
+            "filename": result['filename'],
+            "image_info": result['image_info']
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+
 # Define the main chat endpoint that handles POST requests
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
-    global vector_db, current_document_name
+    global vector_db, current_document_name, current_image
     
     try:
         # Initialize OpenAI client with the provided API key
@@ -126,6 +166,9 @@ async def chat(request: ChatRequest):
         async def generate():
             # Prepare system message
             system_content = "You are a helpful AI assistant."
+            
+            # Prepare messages list
+            messages = [{"role": "system", "content": system_content}]
             
             # If we have document context, use RAG
             if request.has_context and vector_db is not None and current_document_name:
@@ -143,14 +186,34 @@ async def chat(request: ChatRequest):
                 {context}
                 
                 Please answer the user's question based only on the information provided in the document context above."""
+                
+                messages[0]["content"] = system_content
+            
+            # Handle image if present
+            if current_image is not None:
+                # Add image to the user message
+                user_content = [
+                    {
+                        "type": "text",
+                        "text": request.user_message
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{current_image['image_base64']}"
+                        }
+                    }
+                ]
+            else:
+                user_content = request.user_message
+            
+            # Add user message to messages
+            messages.append({"role": "user", "content": user_content})
             
             # Create a streaming chat completion request
             stream = client.chat.completions.create(
                 model=request.model,
-                messages=[
-                    {"role": "system", "content": system_content},
-                    {"role": "user", "content": request.user_message}
-                ],
+                messages=messages,
                 stream=True  # Enable streaming response
             )
             
