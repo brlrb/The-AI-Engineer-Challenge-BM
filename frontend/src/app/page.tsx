@@ -519,7 +519,7 @@ export default function Home() {
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs opacity-70">
-                      {message.role === 'user' ? '👤 You' : '🤖 AI'}
+                      {message.role === 'user' ? '👤 You' : `🤖 ${model} (${getProviderDisplayName()})`}
                     </span>
                     <span className="text-xs opacity-50">
                       {formatTime(message.timestamp)}
@@ -641,7 +641,7 @@ export default function Home() {
               <div className="flex justify-start">
                 <div className="max-w-[80%] rounded-lg px-4 py-3 bg-transparent text-[#696969]">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs opacity-70">🤖 AI</span>
+                    <span className="text-xs opacity-70">🤖 {model} ({getProviderDisplayName()})</span>
                     <span className="inline-block h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
                   </div>
                 </div>
@@ -653,7 +653,7 @@ export default function Home() {
               <div className="flex justify-start">
                 <div className="max-w-[80%] rounded-lg px-4 py-3 bg-transparent text-[#696969]">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs opacity-70">🤖 AI</span>
+                    <span className="text-xs opacity-70">🤖 {model} ({getProviderDisplayName()})</span>
                     <span className="text-xs opacity-50">typing...</span>
                   </div>
                   <div className="prose max-w-none">
