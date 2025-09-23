@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 # Import OpenAI client for interacting with OpenAI's API
 from openai import OpenAI, AsyncOpenAI
+# Import Together AI client
+from together import Together
 import os
 import tempfile
 import asyncio
@@ -19,7 +21,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from aimakerspace.vectordatabase import VectorDatabase
 from aimakerspace.text_utils import PDFLoader, TextFileLoader, CharacterTextSplitter
 from aimakerspace.openai_utils.embedding import EmbeddingModel
-from aimakerspace.openai_utils.chatmodel import ChatOpenAI
+from aimakerspace.openai_utils.chatmodel import ChatOpenAI, ChatTogetherAI, create_chat_model
 from aimakerspace.image_utils import ImageUploadHandler
 
 # Initialize FastAPI application with a title
@@ -45,9 +47,9 @@ current_image: Optional[dict] = None
 # This ensures incoming request data is properly validated
 class ChatRequest(BaseModel):
     user_message: str      # Message from the user
-    model: Optional[str] = "gpt-4.1-mini"  # Optional model selection with default
-    api_key: str          # OpenAI API key for authentication
-    provider: Optional[str] = "openai"  # AI provider (openai, gemini)
+    model: Optional[str] = None  # Optional model selection with default
+    api_key: str          # API key for authentication (OpenAI or Together AI)
+    provider: Optional[str] = "openai"  # AI provider (openai, together)
     style: Optional[Dict[str, int]] = None  # Style parameters
     has_context: Optional[bool] = False  # Whether document context is available
 
@@ -155,8 +157,15 @@ async def chat(request: ChatRequest):
     global vector_db, current_document_name, current_image
     
     try:
-        # Initialize OpenAI client with the provided API key
-        client = OpenAI(api_key=request.api_key)
+        # Set the appropriate API key based on provider
+        if request.provider.lower() == "together":
+            os.environ["TOGETHER_API_KEY"] = request.api_key
+            # Initialize Together AI client
+            client = Together(api_key=request.api_key)
+        else:
+            os.environ["OPENAI_API_KEY"] = request.api_key
+            # Initialize OpenAI client
+            client = OpenAI(api_key=request.api_key)
         
         # Create an async generator function for streaming responses
         async def generate():
@@ -215,9 +224,18 @@ async def chat(request: ChatRequest):
             # Add user message to messages
             messages.append({"role": "user", "content": user_content})
             
+            # Determine the model to use based on provider
+            if request.model is None:
+                if request.provider.lower() == "together":
+                    model = "meta-llama/Llama-3.1-8B-Instruct-Turbo"
+                else:
+                    model = "gpt-4o-mini"
+            else:
+                model = request.model
+            
             # Create a streaming chat completion request
             stream = client.chat.completions.create(
-                model=request.model,
+                model=model,
                 messages=messages,
                 stream=True  # Enable streaming response
             )
