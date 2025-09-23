@@ -14,6 +14,7 @@ This feature adds support for Together AI API alongside the existing OpenAI inte
    - Added factory function `create_chat_model()` for provider selection
 3. **API Updates**: Modified `api/app.py` to support both providers
 4. **Request Model**: Updated `ChatRequest` to accept provider parameter
+5. **Frontend UI**: Updated `frontend/src/app/page.tsx` to include Together AI provider option
 
 ## Merge Options
 
@@ -98,13 +99,21 @@ After merging, users will need to:
 
 ## Usage
 
-Users can now use Together AI by:
+Users can now use Together AI through the frontend UI:
 
-1. Setting `provider: "together"` in their chat requests
-2. Providing a Together AI API key
-3. Optionally specifying a custom model name
+1. **Via Frontend UI**: 
+   - Open the settings panel (⚙️ icon)
+   - Select "Together AI" from the AI Provider dropdown
+   - Enter your Together AI API key
+   - Choose from available Together AI models (Llama, Mistral, Qwen)
+   - Start chatting!
 
-Example request:
+2. **Via API** (for developers):
+   - Set `provider: "together"` in chat requests
+   - Provide a Together AI API key
+   - Optionally specify a custom model name
+
+Example API request:
 ```json
 {
   "user_message": "Hello!",
