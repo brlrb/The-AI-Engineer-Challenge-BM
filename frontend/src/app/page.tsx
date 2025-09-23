@@ -44,7 +44,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
   const [provider, setProvider] = useState('openai');
-  const [model, setModel] = useState('gpt-4.1');
+  const [model, setModel] = useState('gpt-4o-mini');
   const [tone, setTone] = useState(50);
   const [clarity, setClarity] = useState(50);
   const [professionalism, setProfessionalism] = useState(50);
@@ -79,18 +79,26 @@ export default function Home() {
   const getAvailableModels = () => {
     if (provider === 'openai') {
       return [
-        { value: 'gpt-4.1', label: 'gpt-4.1' },
-        { value: 'gpt-4.1-mini', label: 'gpt-4.1-mini' },
-        { value: 'gpt-4.1-nano', label: 'gpt-4.1-nano' },
-        { value: 'gpt-5', label: 'gpt-5' },
-        { value: 'gpt-5-mini', label: 'gpt-5-mini' },
-        { value: 'gpt-5-nano', label: 'gpt-5-nano' },
+        { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+        { value: 'gpt-4o', label: 'GPT-4o' },
+        { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+        { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
       ];
     } else if (provider === 'gemini') {
       return [
-        { value: 'gemini-1.5-pro', label: 'gemini-1.5-pro' },
-        { value: 'gemini-1.5-flash', label: 'gemini-1.5-flash' },
-        { value: 'gemini-1.0-pro', label: 'gemini-1.0-pro' },
+        { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+        { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+        { value: 'gemini-1.0-pro', label: 'Gemini 1.0 Pro' },
+      ];
+    } else if (provider === 'together') {
+      return [
+        { value: 'meta-llama/Llama-3.1-8B-Instruct-Turbo', label: 'Llama 3.1 8B Instruct Turbo' },
+        { value: 'meta-llama/Llama-3.1-70B-Instruct-Turbo', label: 'Llama 3.1 70B Instruct Turbo' },
+        { value: 'meta-llama/Meta-Llama-3-8B-Instruct', label: 'Llama 3 8B Instruct' },
+        { value: 'meta-llama/Meta-Llama-3-70B-Instruct', label: 'Llama 3 70B Instruct' },
+        { value: 'mistralai/Mixtral-8x7B-Instruct-v0.1', label: 'Mixtral 8x7B Instruct' },
+        { value: 'mistralai/Mistral-7B-Instruct-v0.3', label: 'Mistral 7B Instruct' },
+        { value: 'Qwen/Qwen2.5-7B-Instruct', label: 'Qwen 2.5 7B Instruct' },
       ];
     }
     return [];
@@ -101,6 +109,8 @@ export default function Home() {
       return '🔑 OpenAI API Key';
     } else if (provider === 'gemini') {
       return '🔑 Google Gemini API Key';
+    } else if (provider === 'together') {
+      return '🔑 Together AI API Key';
     }
     return '🔑 API Key';
   };
@@ -110,6 +120,8 @@ export default function Home() {
       return 'Enter your OpenAI API key...';
     } else if (provider === 'gemini') {
       return 'Enter your Google Gemini API key...';
+    } else if (provider === 'together') {
+      return 'Enter your Together AI API key...';
     }
     return 'Enter your API key...';
   };
@@ -119,6 +131,8 @@ export default function Home() {
       return 'OpenAI';
     } else if (provider === 'gemini') {
       return 'Google Gemini';
+    } else if (provider === 'together') {
+      return 'Together AI';
     }
     return provider;
   };
@@ -424,6 +438,7 @@ export default function Home() {
                     >
                       <option value="openai">OpenAI</option>
                       <option value="gemini">Google Gemini</option>
+                      <option value="together">Together AI</option>
                     </select>
                   </div>
 
