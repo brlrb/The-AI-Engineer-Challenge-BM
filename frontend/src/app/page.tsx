@@ -387,7 +387,7 @@ export default function Home() {
       <div className="absolute top-4 right-4 z-10">
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" data-settings-trigger>
               <Settings className="h-4 w-4" />
               <span className="sr-only">Open settings</span>
             </Button>
@@ -558,7 +558,16 @@ export default function Home() {
           <p className="text-black text-sm">
             Using <span className="font-semibold text-black">{model}</span> from <span className="font-semibold text-black">{getProviderDisplayName()}</span>
             {!apiKey.trim() && (
-              <span className="text-red-500 text-sm ml-2">• API key is missing</span>
+              <span className="text-red-500 text-sm ml-2">• Missing API key. <button 
+                onClick={() => {
+                  // Trigger the settings sheet to open
+                  const settingsButton = document.querySelector('[data-settings-trigger]') as HTMLButtonElement;
+                  settingsButton?.click();
+                }}
+                className="hover:text-red-700 cursor-pointer transition-colors border-b-2 border-dotted border-red-500 hover:border-red-700"
+              >
+                Click to add
+              </button>.</span>
             )}
           </p>
         </div>
