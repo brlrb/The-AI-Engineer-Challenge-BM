@@ -568,7 +568,7 @@ export default function Home() {
         {/* Header */}
         <div className="text-center mb-5">
           <h1 className="text-2xl font-bold mb-2" style={{ color: '#266CA9' }}>
-            🤖 AIM Challenge
+            🤖 CHAT (various AI Models)
           </h1>
           <p className="text-black text-sm">
             Using <span className="font-semibold text-black">{model}</span> from <span className="font-semibold text-black">{getProviderDisplayName()}</span>
