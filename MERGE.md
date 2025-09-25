@@ -1,5 +1,7 @@
 # Merge Instructions for Together AI Integration
 
+✅ **MERGE COMPLETED** - The Together AI integration feature has been successfully merged to the main branch.
+
 This document provides instructions for merging the Together AI integration feature back to the main branch.
 
 ## Feature Summary
@@ -15,8 +17,23 @@ This feature adds support for Together AI API alongside the existing OpenAI inte
 3. **API Updates**: Modified `api/app.py` to support both providers
 4. **Request Model**: Updated `ChatRequest` to accept provider parameter
 5. **Frontend UI**: Updated `frontend/src/app/page.tsx` to include Together AI provider option
+6. **File Upload Enhancement**: Increased file size limit from 10MB to 50MB for better user experience
+7. **Development Setup**: Commented out Vercel handler for local development
 
-## Merge Options
+## ✅ Merge Completed
+
+The feature branch `feature/together-ai-integration` has been successfully merged into `main` using a fast-forward merge. The merge included:
+
+- **21 files changed** with **2,600 insertions** and **93 deletions**
+- All Together AI integration features
+- File upload limit increase to 50MB
+- Updated dependencies and requirements
+
+**Merge commit**: `334f2db` - "upgraded the file upload to 50mb from 10mb"
+
+The changes have been pushed to the remote main branch and are now available for deployment.
+
+## Merge Options (For Future Reference)
 
 ### Option 1: GitHub Pull Request (Recommended)
 
