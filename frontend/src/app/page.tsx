@@ -300,10 +300,10 @@ export default function Home() {
       return;
     }
 
-    // Validate file size (10MB limit)
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    // Validate file size (50MB limit)
+    const maxSize = 50 * 1024 * 1024; // 50MB
     if (file.size > maxSize) {
-      alert('File size must be less than 10MB.');
+      alert('File size must be less than 50MB.');
       return;
     }
 
@@ -887,7 +887,7 @@ export default function Home() {
                       <Upload className="h-3.5 w-3.5" />
                       {isUploading ? 'Uploading...' : isParsing ? 'Processing...' : 'Upload File'}
                     </Button>
-                    <p className="text-xs text-gray-500">Max 10MB • PDF, TXT, or JPG/JPEG files</p>
+                    <p className="text-xs text-gray-500">Max 50MB • PDF, TXT, or JPG/JPEG files</p>
                   </div>
                 ) : (
                   <div className={`flex items-center gap-3 rounded-lg px-4 py-3 ${

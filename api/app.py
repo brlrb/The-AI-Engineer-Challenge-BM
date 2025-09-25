@@ -64,10 +64,10 @@ async def upload_file(file: UploadFile = File(...), api_key: str = Form(...)):
         if file.content_type not in allowed_types:
             raise HTTPException(status_code=400, detail="Only PDF, TXT, and JPG/JPEG files are allowed")
         
-        # Validate file size (10MB limit)
+        # Validate file size (50MB limit)
         content = await file.read()
-        if len(content) > 10 * 1024 * 1024:  # 10MB
-            raise HTTPException(status_code=400, detail="File size must be less than 10MB")
+        if len(content) > 50 * 1024 * 1024:  # 50MB
+            raise HTTPException(status_code=400, detail="File size must be less than 50MB")
         
         # Create temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file.filename.split('.')[-1]}") as temp_file:
@@ -264,4 +264,4 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 # Vercel requires a handler function
-handler = app
+# handler = app
