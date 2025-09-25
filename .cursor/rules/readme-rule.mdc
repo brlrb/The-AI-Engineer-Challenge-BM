@@ -1,0 +1,9 @@
+---
+globs: *.md
+alwaysApply: false
+---
+
+## README.md rule
+
+- When you create a README.md's, it should use fun and approachable language
+- While being fun and approachable, it should be technically accurate

@@ -1,0 +1,9 @@
+---
+description: When designing a frontend application or frontend components
+globs:
+alwaysApply: false
+---
+
+- You must pay attention to visual clarity and contrast. Do not place white text on white background
+- You must ensure that the UI/UX is plesant
+- You should use Next.js as it works best with Vercel

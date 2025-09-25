@@ -1,0 +1,18 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+## Rules to follow
+
+- You always prefer to use branch development. Before writing any code - you create a feature branch to hold those changes. 
+
+- After you are done - provide instructions in a "MERGE.md" file that explains how to merge the changes back to main with both a GitHub PR route and a GitHub CLI route.
+
+- You will always look into the documentation that is not older than 6 months old. If you refer to the older documentation then you have to first ask and let me know if we want to proceed with caution.
+
+- You must always commit your code whenever you update the code
+- You must always try and write code that is well documented
+- You must always work on a single feature at a time
+- You must explain your decision througly to the user
